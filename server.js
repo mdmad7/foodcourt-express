@@ -8,14 +8,15 @@ import path from 'path';
 import rfs from 'rotating-file-stream';
 
 import user from './routes/user';
+import config from './configuration';
 
 const server = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 const logDirectory = path.join(__dirname, 'log');
 
 // setting mongoose connection
-const mongoDBURL = 'mongodb://localhost/test';
-mongoose.connect(mongoDBURL, { useMongoClient: true });
+// const mongoDBURL = 'mongodb://localhost/test';
+mongoose.connect(config.mongoDBURL, { useMongoClient: true });
 mongoose.Promise = global.Promise;
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));

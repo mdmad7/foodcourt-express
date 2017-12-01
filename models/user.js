@@ -3,37 +3,50 @@ import bcrypt from 'bcryptjs';
 
 const UserSchema = new Schema(
   {
-    first_name: {
-      type: String,
-      required: true,
-      lowercase: true,
+    name: {
+      first_name: {
+        type: String,
+        required: true,
+        lowercase: true,
+      },
+      last_name: {
+        type: String,
+        required: true,
+        lowercase: true,
+      },
+      other_names: {
+        type: String,
+        lowercase: true,
+      },
     },
-    last_name: {
+    gender: {
       type: String,
-      required: true,
-      lowercase: true,
+      enum: ['Male', 'Female'],
     },
-    other_names: {
+    date_of_birth: {
+      type: Date,
+    },
+    username: {
       type: String,
-      lowercase: true,
+      unique: true,
+      trim: true,
     },
     email: {
       type: String,
       required: true,
       unique: true,
-      lowercase: true,
     },
     password: {
       type: String,
       required: true,
       trim: true,
     },
-    hasDeleted: {
+    isDeleted: {
       type: Boolean,
       default: false,
     },
-    friends: {},
-    favourite_vendors: {},
+    friends: [{ type: Schema.ObjectId, ref: 'User' }],
+    favourite_vendors: [{ type: Schema.ObjectId, ref: 'Vendor' }],
   },
   {
     timestamps: true,
