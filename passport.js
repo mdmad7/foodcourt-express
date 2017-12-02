@@ -35,7 +35,7 @@ passport.use(
       try {
         const user = await User.findOne({
           email,
-          hasDeleted: { $eq: false },
+          isDeleted: { $eq: false },
         });
 
         if (!user) {

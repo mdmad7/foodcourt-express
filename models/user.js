@@ -6,12 +6,12 @@ const UserSchema = new Schema(
     name: {
       first_name: {
         type: String,
-        required: true,
+        // required: true,
         lowercase: true,
       },
-      last_name: {
+      family_name: {
         type: String,
-        required: true,
+        // required: true,
         lowercase: true,
       },
       other_names: {
@@ -21,7 +21,8 @@ const UserSchema = new Schema(
     },
     gender: {
       type: String,
-      enum: ['Male', 'Female'],
+      enum: ['male', 'female'],
+      // required: true,
     },
     date_of_birth: {
       type: Date,
@@ -33,13 +34,18 @@ const UserSchema = new Schema(
     },
     email: {
       type: String,
-      required: true,
+      // required: true,
       unique: true,
     },
     password: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
+    },
+    role: {
+      type: String,
+      enum: ['administrator', 'user'],
+      default: 'user',
     },
     isDeleted: {
       type: Boolean,
@@ -51,19 +57,29 @@ const UserSchema = new Schema(
   {
     timestamps: true,
     toJSON: { virtuals: true, getters: true },
+    toObject: { virtuals: true, getters: true },
   },
 );
 
 UserSchema.pre('save', async function savePassword(next) {
-  try {
-    // Generate a salt
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(this.password, salt);
-    this.password = passwordHash;
-    next();
-  } catch (error) {
-    next(error);
+  if (this.password) {
+    try {
+      // Generate a salt
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(this.password, salt);
+      this.password = passwordHash;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    return false;
   }
+});
+
+// Virtual for user's full name
+UserSchema.virtual('full_name').get(function() {
+  return `${this.name.first_name} ${this.name.family_name}`;
 });
 
 UserSchema.methods.isValidPassword = async function comparePassword(

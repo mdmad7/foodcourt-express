@@ -6,6 +6,7 @@ import bodyParser from 'body-parser';
 import fs from 'fs';
 import path from 'path';
 import rfs from 'rotating-file-stream';
+import boom from 'express-boom';
 
 import user from './routes/user';
 import config from './configuration';
@@ -35,6 +36,8 @@ const accessLogStream = rfs('access.log', {
 });
 
 // Express middlewares
+server.use(boom());
+server.use(logger('common'));
 server.use(logger('common', { stream: accessLogStream }));
 server.use(cors());
 server.use(bodyParser.json());
@@ -44,15 +47,14 @@ server.use('/v1/api/', user);
 
 // catch 404 and forward to error handler
 server.use((req, res, next) => {
-  const err = new Error('Not Found');
-  err.status = 404;
-  next(err);
+  res.boom.notFound(); // Responds with a 404 status code
 });
 
 // error handler
-server.use((err, req, res) => {
-  res.status(500);
-  res.send(err);
+server.use((err, req, res, next) => {
+  if (err.isBoom) {
+    return res.status(err.output.statusCode).json(err.output.payload);
+  }
 });
 
 server.listen(PORT, () => console.log(`API Running on localhost:${PORT}`));
