@@ -1,8 +1,12 @@
 import JWT from 'jsonwebtoken';
 import passport from 'passport';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import sharp from 'sharp';
+import mkdirp from 'mkdirp';
 import config from '../configuration';
 import User from '../models/user';
-import { RegExp } from 'core-js/library/web/timers';
 
 const signToken = user =>
   JWT.sign(
@@ -14,7 +18,7 @@ const signToken = user =>
     },
     config.JWT_SECRET,
     {
-      expiresIn: '1hr',
+      expiresIn: '1d',
     },
   );
 
@@ -69,6 +73,144 @@ export const userProfile = async (req, res) => {
       res.json('an error occurred');
     } else {
       res.json(user);
+    }
+  });
+};
+
+export const userAvatar = async (req, res, next) => {
+  const token = req.headers.authorization;
+  const decoded = JWT.verify(token, config.JWT_SECRET);
+
+  const storage = multer.diskStorage({
+    destination: './public/uploads/avatar/',
+    filename: function(req, file, cb) {
+      cb(null, decoded.id + path.extname(file.originalname));
+    },
+  });
+
+  const upload = multer({
+    storage: storage,
+    limits: { fileSize: 1000000 },
+    fileFilter: function(req, file, cb) {
+      // Ensure image upload only
+      fileTypeCheck(file, cb);
+    },
+  }).single('avatar');
+
+  // file type checking function
+  function fileTypeCheck(file, cb) {
+    // Allowed files using regex
+    const filetypes = /jpeg|jpg|png/;
+    // check extention
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase(),
+    );
+    //check mimetype
+    const mimetype = filetypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb('Error: Images only!!!');
+    }
+  }
+
+  await upload(req, res, err => {
+    if (err) {
+      res.json(err);
+    } else {
+      if (req.file === undefined) {
+        res.json({ error: 'no file selected' });
+      } else {
+        let pipeline = sharp(req.file.path);
+
+        // create directories if they do not exist
+        mkdirp('./public/uploads/avatar/default/');
+        mkdirp('./public/uploads/avatar/720x720/');
+        mkdirp('./public/uploads/avatar/360x360/');
+        mkdirp('./public/uploads/avatar/180x180/');
+
+        // chained sharpjs to create several instances of req.file
+        // using clone()
+        pipeline
+          .clone()
+          .resize(960, 960)
+          .toFile(
+            `./public/uploads/avatar/default/${decoded.id}.${path.extname(
+              req.file.originalname,
+            )}`,
+          )
+          .then(() => {
+            pipeline
+              .clone()
+              .resize(720, 720)
+              .toFile(
+                `./public/uploads/avatar/720x720/${
+                  decoded.id
+                }720x720${path.extname(req.file.originalname)}`,
+              );
+          })
+          .then(() => {
+            pipeline
+              .clone()
+              .resize(360, 360)
+              .toFile(
+                `./public/uploads/avatar/360x360/${
+                  decoded.id
+                }360x360${path.extname(req.file.originalname)}`,
+              );
+          })
+          .then(() => {
+            pipeline
+              .clone()
+              .resize(180, 180)
+              .toFile(
+                `./public/uploads/avatar/180x180/${
+                  decoded.id
+                }180x180${path.extname(req.file.originalname)}`,
+              )
+              .then(file => {
+                const user = new User({
+                  img: {
+                    original: `/public/uploads/avatar/default/${
+                      decoded.id
+                    }${path.extname(req.file.originalname)}`,
+                    thumbnail720x720: `/public/uploads/avatar/720x720/${
+                      decoded.id
+                    }720x720${path.extname(req.file.originalname)}`,
+                    thumbnail360x360: `/public/uploads/avatar/360x360/${
+                      decoded.id
+                    }360x360${path.extname(req.file.originalname)}`,
+                    thumbnail180x180: `/public/uploads/avatar/180x180/${
+                      decoded.id
+                    }180x180${path.extname(req.file.originalname)}`,
+                  },
+                  _id: decoded.id,
+                });
+                User.findByIdAndUpdate(
+                  decoded.id,
+                  user,
+                  // { new: true },
+                  (err, updatedUser) => {
+                    if (err) {
+                      console.log(err);
+                    }
+                    console.log(updatedUser);
+                  },
+                );
+              })
+              .then(() => {
+                // remove original file uploaded by multer
+                fs.unlink(
+                  `./public/uploads/avatar/${decoded.id}${path.extname(
+                    req.file.originalname,
+                  )}`,
+                );
+              });
+          });
+
+        res.json({ message: 'Image Uploaded!!!' });
+      }
     }
   });
 };

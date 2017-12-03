@@ -18,6 +18,12 @@ router.get(
   userController.userProfile,
 );
 
+router.patch(
+  '/user/avatar',
+  passport.authenticate('jwt', { session: false }),
+  userController.userAvatar,
+);
+
 // signup a user
 router.post('/user/signup', expressJoi(createUser), userController.signUp);
 

@@ -43,6 +43,8 @@ server.use(cors());
 server.use(bodyParser.json());
 server.use(bodyParser.urlencoded({ extended: false }));
 
+server.use(express.static('./public'));
+
 server.use('/v1/api/', user);
 
 // catch 404 and forward to error handler

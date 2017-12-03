@@ -19,6 +19,20 @@ const UserSchema = new Schema(
         lowercase: true,
       },
     },
+    img: {
+      original: {
+        type: String,
+      },
+      thumbnail720x720: {
+        type: String,
+      },
+      thumbnail360x360: {
+        type: String,
+      },
+      thumbnail180x180: {
+        type: String,
+      },
+    },
     gender: {
       type: String,
       enum: ['male', 'female'],
