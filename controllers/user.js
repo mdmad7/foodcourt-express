@@ -216,7 +216,7 @@ export const userAvatar = async (req, res, next) => {
 };
 
 export const logIn = async (req, res) => {
-  passport.authenticate('local', (err, user) => {
+  passport.authenticate('user', (err, user) => {
     if (err) {
       res.json({ error: 'authentication failed' });
     }

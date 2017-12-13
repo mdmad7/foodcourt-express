@@ -9,6 +9,7 @@ import rfs from 'rotating-file-stream';
 import boom from 'express-boom';
 
 import user from './routes/user';
+import vendor from './routes/vendor';
 import config from './configuration';
 
 const server = express();
@@ -47,6 +48,7 @@ server.use('/static', express.static(path.join(__dirname, 'public')));
 // server.use(express.static('public'));
 
 server.use('/v1/api/', user);
+server.use('/v1/api/', vendor);
 
 // catch 404 and forward to error handler
 server.use((req, res, next) => {
