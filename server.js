@@ -43,7 +43,8 @@ server.use(cors());
 server.use(bodyParser.json());
 server.use(bodyParser.urlencoded({ extended: false }));
 
-server.use(express.static('./public'));
+server.use('/static', express.static(path.join(__dirname, 'public')));
+// server.use(express.static('public'));
 
 server.use('/v1/api/', user);
 

@@ -6,15 +6,19 @@ const UserSchema = new Schema(
     name: {
       first_name: {
         type: String,
-        // required: true,
+        required: true,
         lowercase: true,
       },
       family_name: {
         type: String,
-        // required: true,
+        required: true,
         lowercase: true,
       },
       other_names: {
+        type: String,
+        lowercase: true,
+      },
+      full_name: {
         type: String,
         lowercase: true,
       },
@@ -36,7 +40,7 @@ const UserSchema = new Schema(
     gender: {
       type: String,
       enum: ['male', 'female'],
-      // required: true,
+      required: true,
     },
     date_of_birth: {
       type: Date,
@@ -48,12 +52,12 @@ const UserSchema = new Schema(
     },
     email: {
       type: String,
-      // required: true,
+      required: true,
       unique: true,
     },
     password: {
       type: String,
-      // required: true,
+      required: true,
       trim: true,
     },
     role: {
@@ -89,11 +93,6 @@ UserSchema.pre('save', async function savePassword(next) {
   } else {
     return false;
   }
-});
-
-// Virtual for user's full name
-UserSchema.virtual('full_name').get(function() {
-  return `${this.name.first_name} ${this.name.family_name}`;
 });
 
 UserSchema.methods.isValidPassword = async function comparePassword(

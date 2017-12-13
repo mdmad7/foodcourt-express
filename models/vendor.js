@@ -8,14 +8,7 @@ const VendorSchema = new Schema(
       required: true,
       lowercase: true,
     },
-    owner: [
-      {
-        first_name: { type: String, lowercase: true, required: true },
-        last_name: { type: String, lowercase: true, required: true },
-        date_of_birth: { type: Date },
-        gender: { type: String, enum: ['Male', 'Female'] },
-      },
-    ],
+    owner: [{ type: Schema.ObjectId, ref: 'User' }],
     address: {
       house_number: { type: String },
       street_name: { type: String },

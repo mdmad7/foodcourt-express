@@ -90,7 +90,7 @@ export const userAvatar = async (req, res, next) => {
 
   const upload = multer({
     storage: storage,
-    limits: { fileSize: 1000000 },
+    limits: { fileSize: 5000000 },
     fileFilter: function(req, file, cb) {
       // Ensure image upload only
       fileTypeCheck(file, cb);
@@ -136,7 +136,7 @@ export const userAvatar = async (req, res, next) => {
           .clone()
           .resize(960, 960)
           .toFile(
-            `./public/uploads/avatar/default/${decoded.id}.${path.extname(
+            `./public/uploads/avatar/default/${decoded.id}${path.extname(
               req.file.originalname,
             )}`,
           )
@@ -172,16 +172,16 @@ export const userAvatar = async (req, res, next) => {
               .then(file => {
                 const user = new User({
                   img: {
-                    original: `/public/uploads/avatar/default/${
+                    original: `/static/uploads/avatar/default/${
                       decoded.id
                     }${path.extname(req.file.originalname)}`,
-                    thumbnail720x720: `/public/uploads/avatar/720x720/${
+                    thumbnail720x720: `/static/uploads/avatar/720x720/${
                       decoded.id
                     }720x720${path.extname(req.file.originalname)}`,
-                    thumbnail360x360: `/public/uploads/avatar/360x360/${
+                    thumbnail360x360: `/static/uploads/avatar/360x360/${
                       decoded.id
                     }360x360${path.extname(req.file.originalname)}`,
-                    thumbnail180x180: `/public/uploads/avatar/180x180/${
+                    thumbnail180x180: `/static/uploads/avatar/180x180/${
                       decoded.id
                     }180x180${path.extname(req.file.originalname)}`,
                   },
@@ -238,7 +238,23 @@ export const signUp = async (req, res) => {
     return res.status(401).json({ error: 'Email is already is use' });
   }
 
-  const newUser = new User(req.body);
+  const newUser = new User({
+    name: {
+      first_name: req.body.name.first_name,
+      family_name: req.body.name.family_name,
+      other_names: req.body.name.other_names ? req.body.name.other_names : '',
+      full_name: req.body.name.other_names
+        ? `${req.body.name.first_name} ${req.body.name.other_names} ${
+            req.body.name.family_name
+          }`
+        : `${req.body.name.first_name} ${req.body.name.family_name}`,
+    },
+    gender: req.body.gender,
+    username: `${req.body.email.split('@')[0]}`,
+    email: req.body.email,
+    password: req.body.password,
+    date_of_birth: req.body.date_of_birth,
+  });
 
   await newUser.save();
 
@@ -262,7 +278,7 @@ export const updateUser = async (req, res) => {
   const user = new User({
     name: {
       first_name: req.body.name.first_name,
-      family_name: req.body.name.last_name,
+      family_name: req.body.name.family_name,
       other_names: req.body.name.other_names,
     },
     gender: req.body.gender,
@@ -341,17 +357,23 @@ export const searchUser = async (req, res) => {
   }
   // Pagination logic for search endpoint.
   let skip = page > 0 ? (page - 1) * limit : 0;
-  // run search variable on all 3 namve object values, $options - case insensive & . wildcard
+  // run search variable on all 3 name object values, $options - case insensive & . wildcard
   // .limit() && .skip() for pagination
   // total number of pages is .count() find results divided by limit
-  await User.find({
-    $or: [
-      { 'name.first_name': { $regex: '.*' + search + '.*', $options: 'is' } },
-      { 'name.family_name': { $regex: '.*' + search + '.*', $options: 'is' } },
-      { 'name.other_names': { $regex: '.*' + search + '.*', $options: 'is' } },
-    ], // regex to search for provided name
-    isDeleted: { $eq: false },
-  })
+  await User.find(
+    {
+      $or: [
+        { 'name.full_name': { $regex: '.*' + search + '.*', $options: 'is' } },
+      ], // regex to search for provided name
+      isDeleted: { $eq: false },
+    },
+    {
+      _id: 0,
+      password: 0,
+      updatedAt: 0,
+      createdAt: 0,
+    },
+  )
     .limit(limit)
     .skip(skip)
     .exec((err, user) => {
