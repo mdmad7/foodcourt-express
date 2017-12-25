@@ -13,68 +13,89 @@ const signToken = user =>
     {
       id: user.id,
       email: user.email,
-      firstName: user.name.first_name,
-      lastName: user.name.last_name,
+      first_name: user.name.first_name,
+      last_name: user.name.last_name,
     },
     config.JWT_SECRET,
     {
-      expiresIn: '1d',
+      expiresIn: '5m',
+    },
+  );
+
+const createRefreshToken = user =>
+  JWT.sign(
+    {
+      id: user.id,
+      email: user.email,
+      type: 'refresh',
+    },
+    config.JWT_SECRET,
+    {
+      expiresIn: '24h',
     },
   );
 
 export const allUsers = async (req, res) => {
-  let limit = parseInt(req.query.limit);
-  let page = parseInt(req.query.page, 10);
+  try {
+    let limit = parseInt(req.query.limit);
+    let page = parseInt(req.query.page, 10);
 
-  // parseInt attempts to parse the value to an integer
-  // it returns a special "NaN" value when it is Not a Number.
-  if (isNaN(page) || page < 1) {
-    page = 1;
+    // parseInt attempts to parse the value to an integer
+    // it returns a special "NaN" value when it is Not a Number.
+    if (isNaN(page) || page < 1) {
+      page = 1;
+    }
+
+    if (isNaN(limit)) {
+      limit = 10;
+    } else if (limit > 50) {
+      limit = 50;
+    } else if (limit < 1) {
+      limit = 10;
+    }
+    // Pagination logic for search endpoint.
+    let skip = page > 0 ? (page - 1) * limit : 0;
+
+    await User.find(
+      {
+        isDeleted: { $eq: false },
+      },
+      {
+        _id: 0,
+        password: 0,
+        updatedAt: 0,
+        createdAt: 0,
+      },
+    )
+      .limit(limit)
+      .skip(skip)
+      .exec((err, users) => {
+        if (err) {
+          res.json('error has occurred');
+        } else {
+          res.json(users);
+        }
+      });
+  } catch (error) {
+    throw new Error(error);
   }
-
-  if (isNaN(limit)) {
-    limit = 10;
-  } else if (limit > 50) {
-    limit = 50;
-  } else if (limit < 1) {
-    limit = 10;
-  }
-  // Pagination logic for search endpoint.
-  let skip = page > 0 ? (page - 1) * limit : 0;
-
-  await User.find(
-    {
-      isDeleted: { $eq: false },
-    },
-    {
-      _id: 0,
-      password: 0,
-      updatedAt: 0,
-      createdAt: 0,
-    },
-  )
-    .limit(limit)
-    .skip(skip)
-    .exec((err, users) => {
-      if (err) {
-        res.json('error has occurred');
-      } else {
-        res.json(users);
-      }
-    });
 };
 
 export const userProfile = async (req, res) => {
-  await User.findOne({
-    _id: req.params.id,
-    isDeleted: { $eq: false },
-  }).exec((err, user) => {
-    if (err) {
-      res.json('an error occurred');
-    } else {
-      res.json(user);
-    }
-  });
+  try {
+    await User.findOne({
+      _id: req.params.id,
+      isDeleted: { $eq: false },
+    }).exec((err, user) => {
+      if (err) {
+        res.json('an error occurred');
+      } else {
+        res.json(user);
+      }
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
 };
 
 export const userAvatar = async (req, res, next) => {
@@ -215,17 +236,31 @@ export const userAvatar = async (req, res, next) => {
   });
 };
 
-export const logIn = async (req, res) => {
-  passport.authenticate('user', (err, user) => {
+export const logIn = (req, res) => {
+  passport.authenticate('user', async (err, user) => {
     if (err) {
       res.json({ error: 'authentication failed' });
     }
     if (!user) {
-      return res.json({ error: 'Invalid email address or password' });
+      return res
+        .status(401)
+        .send({ message: 'Invalid email address or password', success: false });
     }
 
-    const token = signToken(user);
-    return res.status(200).json({ message: 'You are logged In', token });
+    const token = await signToken(user);
+    const refreshToken = await createRefreshToken(user);
+
+    await User.findOneAndUpdate(
+      { email: req.body.email },
+      { $set: { refreshToken: refreshToken } },
+    );
+
+    return res.status(200).json({
+      message: 'You are logged In',
+      token,
+      refreshToken,
+      success: true,
+    });
   })(req, res);
 };
 
@@ -259,7 +294,38 @@ export const signUp = async (req, res) => {
   await newUser.save();
 
   const token = await signToken(newUser);
-  return res.status(200).json({ token });
+  const refreshToken = await createRefreshToken(newUser);
+
+  await User.findOneAndUpdate(
+    { email: req.body.email },
+    { $set: { refreshToken: refreshToken } },
+  );
+
+  return res.status(201).json({ success: true, token, refreshToken });
+};
+
+export const tokenRefreshner = async (req, res) => {
+  const refreshToken = req.body.refreshToken;
+  const decoded = JWT.verify(refreshToken, config.JWT_SECRET);
+
+  const findUser = await User.findOne({
+    _id: decoded.id,
+    isDeleted: { $eq: false },
+  });
+
+  console.log(findUser);
+
+  if (
+    findUser.refreshToken === refreshToken &&
+    decoded.exp < Date.now() / 1000
+  ) {
+    res.status(401).json({ hasExpired: true });
+  } else {
+    const token = await signToken(findUser);
+    res.status(200).json({ hasExpired: false, token });
+  }
+
+  // if(refreshToken === decoded.)
 };
 
 export const updateUser = async (req, res) => {

@@ -27,6 +27,9 @@ router.patch(
 // signup a user
 router.post('/user/signup', expressJoi(createUser), userController.signUp);
 
+// refresh user token when it expires
+router.post('/user/refreshtoken', userController.tokenRefreshner);
+
 // Redirect the user to Facebook for authentication.  When complete,
 // Facebook will redirect the user back to the application at
 //     /auth/facebook/callback
@@ -39,7 +42,7 @@ router.get('/user/auth/facebook', passport.authenticate('facebook'));
 router.get(
   '/user/auth/facebook/callback',
   passport.authenticate('facebook', {
-    successRedirect: '/',
+    successRedirect: '/home',
     failureRedirect: '/login',
   }),
 );
@@ -56,7 +59,7 @@ router.get('/user/auth/twitter', passport.authenticate('twitter'));
 router.get(
   '/user/auth/twitter/callback',
   passport.authenticate('twitter', {
-    successRedirect: '/',
+    successRedirect: '/home',
     failureRedirect: '/login',
   }),
 );
@@ -81,8 +84,8 @@ router.get(
 router.get(
   '/user/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
-  function(req, res) {
-    res.redirect('/');
+  (req, res)=> {
+    res.redirect('/home');
   },
 );
 

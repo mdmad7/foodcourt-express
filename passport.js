@@ -99,13 +99,17 @@ passport.use(
       clientSecret: config.FACEBOOK_APP_SECRET,
       callbackURL: 'http://localhost:4000/user/auth/facebook/callback',
     },
-    (accessToken, refreshToken, profile, done) => {
-      User.findOrCreate((err, user) => {
-        if (err) {
-          return done(err);
-        }
-        done(null, user);
-      });
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        await User.findOrCreate((err, user) => {
+          if (err) {
+            return done(err);
+          }
+          done(null, user);
+        });
+      } catch (error) {
+        console.log(error);
+      }
     },
   ),
 );
@@ -118,10 +122,14 @@ passport.use(
       clientSecret: config.GOOGLE_CLIENT_SECRET,
       callbackURL: 'http://localhost:4000/user/auth/google/callback',
     },
-    (accessToken, refreshToken, profile, done) => {
-      User.findOrCreate({ googleId: profile.id }, (err, user) => {
-        return done(err, user);
-      });
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        await User.findOrCreate({ googleId: profile.id }, (err, user) => {
+          return done(err, user);
+        });
+      } catch (error) {
+        console.log(error);
+      }
     },
   ),
 );
@@ -134,13 +142,17 @@ passport.use(
       consumerSecret: config.TWITTER_CONSUMER_SECRET,
       callbackURL: 'http://localhost:4000/user/auth/twitter/callback',
     },
-    (token, tokenSecret, profile, done) => {
-      User.findOrCreate((err, user) => {
-        if (err) {
-          return done(err);
-        }
-        done(null, user);
-      });
+    async (token, tokenSecret, profile, done) => {
+      try {
+        await User.findOrCreate((err, user) => {
+          if (err) {
+            return done(err);
+          }
+          done(null, user);
+        });
+      } catch (error) {
+        console.log(error);
+      }
     },
   ),
 );

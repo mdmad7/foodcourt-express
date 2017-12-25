@@ -69,6 +69,13 @@ const UserSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    refreshToken: {
+      type: String,
+    },
     friends: [{ type: Schema.ObjectId, ref: 'User' }],
     favourite_vendors: [{ type: Schema.ObjectId, ref: 'Vendor' }],
   },
