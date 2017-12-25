@@ -7,20 +7,7 @@ import sharp from 'sharp';
 import mkdirp from 'mkdirp';
 import config from '../configuration';
 import User from '../models/user';
-
-const signToken = user =>
-  JWT.sign(
-    {
-      id: user.id,
-      email: user.email,
-      first_name: user.name.first_name,
-      last_name: user.name.last_name,
-    },
-    config.JWT_SECRET,
-    {
-      expiresIn: '5m',
-    },
-  );
+import { decode } from 'punycode';
 
 const createRefreshToken = user =>
   JWT.sign(
@@ -32,6 +19,20 @@ const createRefreshToken = user =>
     config.JWT_SECRET,
     {
       expiresIn: '24h',
+    },
+  );
+
+const signToken = user =>
+  JWT.sign(
+    {
+      id: user.id,
+      email: user.email,
+      first_name: user.name.first_name,
+      last_name: user.name.last_name,
+    },
+    config.JWT_SECRET,
+    {
+      expiresIn: '1m',
     },
   );
 
@@ -247,13 +248,25 @@ export const logIn = (req, res) => {
         .send({ message: 'Invalid email address or password', success: false });
     }
 
-    const token = await signToken(user);
-    const refreshToken = await createRefreshToken(user);
-
-    await User.findOneAndUpdate(
-      { email: req.body.email },
-      { $set: { refreshToken: refreshToken } },
+    const hasRefreshToken = await User.findOne(
+      {
+        email: req.body.email,
+      },
+      { refreshToken: 1 },
     );
+
+    const token = await signToken(user);
+    const decoded = JWT.decode(hasRefreshToken.refreshToken, config.JWT_SECRET);
+    let refreshToken = '';
+    if (!hasRefreshToken.refreshToken && decoded.exp < Date.now() / 1000) {
+      refreshToken = await createRefreshToken(user);
+      await User.findOneAndUpdate(
+        { email: req.body.email },
+        { $set: { refreshToken: refreshToken } },
+      );
+    } else {
+      refreshToken = hasRefreshToken.refreshToken;
+    }
 
     return res.status(200).json({
       message: 'You are logged In',
@@ -319,7 +332,9 @@ export const tokenRefreshner = async (req, res) => {
     findUser.refreshToken === refreshToken &&
     decoded.exp < Date.now() / 1000
   ) {
-    res.status(401).json({ hasExpired: true });
+    res.status(200).json({ hasExpired: true });
+  } else if (findUser.refreshToken !== refreshToken) {
+    res.status(200).json({ hasExpired: true });
   } else {
     const token = await signToken(findUser);
     res.status(200).json({ hasExpired: false, token });
